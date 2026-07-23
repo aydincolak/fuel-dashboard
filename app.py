@@ -89,7 +89,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Veri Yükleme ─────────────────────────────────────────────────────────────
-@st.cache_data(ttl=3600)  # 1 saatlik önbellek
+@st.cache_data(ttl=300)  # 5 dakikalık önbellek
 def load_data():
     files = {
         "Brent":    ("Brent.csv",    "DCOILBRENTEU"),
@@ -124,7 +124,7 @@ def load_data():
     return merged
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_meta():
     meta_path = os.path.join(DATA_DIR, "meta.json")
     if os.path.exists(meta_path):
@@ -390,22 +390,19 @@ render_metrics(df_full, df, period_choice)
 st.markdown("---")
 
 # ── Sekmeler ─────────────────────────────────────────────────────────────────
+# 7G MA toggle — sidebar'da tek bir kontrol, her iki sekme için geçerli
+with st.sidebar:
+    st.markdown("### Grafik Seçenekleri")
+    show_ma = st.toggle("7 Günlük Hareketli Ortalama (7G MA)", value=False)
+
 tab1, tab2 = st.tabs(["📊 Ana Grafik", "🔀 İkili Karşılaştırmalar"])
 
 with tab1:
-    c1, c2 = st.columns([6, 1])
-    with c1:
-        st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
-    with c2:
-        show_ma_tab1 = st.toggle("7G MA", value=False, key="ma_tab1")
-    st.plotly_chart(make_iata_chart(df, show_ma=show_ma_tab1), width="stretch")
+    st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
+    st.plotly_chart(make_iata_chart(df, show_ma=show_ma), width="stretch")
 
 with tab2:
-    c1, c2 = st.columns([6, 1])
-    with c1:
-        st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
-    with c2:
-        show_ma_tab2 = st.toggle("7G MA", value=False, key="ma_tab2")
+    st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
     pairs = [
         ("JetFuel", "Brent"),
         ("JetFuel", "Diesel"),
@@ -429,7 +426,7 @@ with tab2:
         with col:
             st.markdown(f"**{pair_labels[(s1,s2)]}**")
             st.plotly_chart(
-                make_dual_chart(df, s1, s2, show_ma=show_ma_tab2),
+                make_dual_chart(df, s1, s2, show_ma=show_ma),
                 width="stretch",
                 key=f"chart_{s1}_{s2}"
             )

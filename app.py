@@ -367,7 +367,7 @@ tab1, tab2 = st.tabs(["📊 Ana Grafik", "🔀 İkili Karşılaştırmalar"])
 
 with tab1:
     st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
-    st.plotly_chart(make_iata_chart(df), use_container_width=True)
+    st.plotly_chart(make_iata_chart(df), width="stretch")
 
 with tab2:
     st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
@@ -395,7 +395,7 @@ with tab2:
             st.markdown(f"**{pair_labels[(s1,s2)]}**")
             st.plotly_chart(
                 make_dual_chart(df, s1, s2),
-                use_container_width=True,
+                width="stretch",
                 key=f"chart_{s1}_{s2}"
             )
 

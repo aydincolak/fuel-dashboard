@@ -26,61 +26,40 @@ SERIES = {
 FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
 HEADERS  = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
 
-import re
-
-
-def fetch_latest_from_html(series_id: str):
-    """FRED'in HTML web sayfasindan en son yayinlanan tarihi ve fiyati ceker (hizli 5s timeout)."""
-    try:
-        import requests
-        url = f"https://fred.stlouisfed.org/series/{series_id}"
-        headers = HEADERS.copy()
-        resp = requests.get(url, headers=headers, timeout=5)
-        if resp.status_code == 200:
-            matches = re.findall(r'(\d{4}-\d{2}-\d{2}):\s*([\d\.]+)', resp.text[:10000])
-            if matches:
-                d_str, v_str = matches[0]
-                return pd.to_datetime(d_str), float(v_str)
-    except Exception as e:
-        print(f"    HTML parse uyarisi: {e}")
-    return None, None
-
-
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker (hizli 5s timeout)."""
+    """FRED'den günlük seriyi çeker."""
     url = FRED_URL.format(series_id=series_id)
     text = None
 
     headers = HEADERS.copy()
     headers["Referer"] = f"https://fred.stlouisfed.org/series/{series_id}"
 
-    # Yontem 1: requests (hizli 5s)
+    # Yöntem 1: requests
     try:
         import requests
-        resp = requests.get(url, headers=headers, timeout=5)
+        resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         text = resp.text
     except Exception as e:
-        print(f"    requests hatasi: {e} — curl deneniyor...")
+        print(f"    requests hatası: {e} — curl deneniyor...")
 
-    # Yontem 2: curl fallback (hizli 5s)
+    # Yöntem 2: curl fallback
     if text is None:
         result = subprocess.run(
             [
                 "curl", "-s",
                 "-A", headers["User-Agent"],
                 "-e", headers["Referer"],
-                "-L", "--max-time", "5", url
+                "-L", "--max-time", "45", url
             ],
-            capture_output=True, text=True, timeout=8
+            capture_output=True, text=True, timeout=60
         )
         if result.returncode != 0 or not result.stdout.strip():
-            raise RuntimeError(f"curl hatasi: {result.stderr}")
+            raise RuntimeError(f"curl hatası: {result.stderr}")
         text = result.stdout
 
     lines = [l for l in text.strip().split("\n") if "," in l]
@@ -90,30 +69,22 @@ def fetch_fred(series_id: str) -> pd.DataFrame:
     df[series_id] = pd.to_numeric(df[series_id], errors="coerce")
     df = df.dropna().sort_values("DATE").reset_index(drop=True)
     df = df[df["DATE"] >= "2021-01-01"].reset_index(drop=True)
-
-    # HTML Web Sayfası Teyidi (CSV CDN gecikmesini aşmak için)
-    h_date, h_val = fetch_latest_from_html(series_id)
-    if h_date is not None and not df.empty and h_date > df["DATE"].max():
-        new_row = pd.DataFrame([{"DATE": h_date, series_id: h_val}])
-        df = pd.concat([df, new_row], ignore_index=True).sort_values("DATE").reset_index(drop=True)
-        print(f"  [HTML Ekleme] Son web verisi eklendi: {h_date.date()} -> {h_val}")
-
     return df
 
 
 def update_csv(filename: str, series_id: str):
     path = os.path.join(DATA_DIR, filename)
-    print(f"[{series_id}] FRED'den veri cekiliyor...")
+    print(f"[{series_id}] FRED'den veri çekiliyor...")
     fresh = fetch_fred(series_id)
 
     if fresh.empty:
-        print(f"  [UYARI] {series_id} verisi bos geldi!")
+        print(f"  [UYARI] {series_id} verisi boş geldi!")
         return
 
     fresh_export = fresh.copy()
     fresh_export["DATE"] = fresh_export["DATE"].dt.strftime("%Y-%m-%d")
     fresh_export.to_csv(path, index=False)
-    print(f"  Guncellendi. Toplam {len(fresh)} satir. Son tarih: {fresh['DATE'].iloc[-1].date()}")
+    print(f"  Güncellendi. Toplam {len(fresh)} satır. Son tarih: {fresh['DATE'].iloc[-1].date()}")
 
 
 def write_last_updated():
@@ -121,15 +92,15 @@ def write_last_updated():
     meta = {"last_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")}
     with open(meta_path, "w") as f:
         json.dump(meta, f)
-    print(f"\nSon guncelleme damgasi yazildi: {meta['last_updated']}")
+    print(f"\nSon güncelleme damgası yazıldı: {meta['last_updated']}")
 
 
 if __name__ == "__main__":
-    print("=== FRED Veri Guncelleyici ===\n")
+    print("=== FRED Veri Güncelleyici ===\n")
     for filename, series_id in SERIES.items():
         try:
             update_csv(filename, series_id)
         except Exception as e:
             print(f"  [HATA] {series_id}: {e}")
     write_last_updated()
-    print("\nTamamlandi!")
+    print("\nTamamlandı!")

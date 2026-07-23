@@ -41,16 +41,13 @@ LABELS = {
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
-# ── Stil ────────────────────────────────────────────────────────────────────
+# ── Stil (Açık ve Koyu Temaya Tam Uyumlu) ──────────────────────────────────
 st.markdown("""
 <style>
-    /* Ana arka plan */
-    .stApp { background-color: #0F1117; }
-
     /* Başlık alanı */
     .header-box {
-        background: linear-gradient(135deg, #1a1f2e 0%, #16213e 100%);
-        border: 1px solid #2d3561;
+        background: rgba(127, 127, 127, 0.08);
+        border: 1px solid rgba(127, 127, 127, 0.2);
         border-radius: 12px;
         padding: 20px 28px;
         margin-bottom: 24px;
@@ -63,41 +60,29 @@ st.markdown("""
     }
     .header-sub {
         font-size: 0.95rem;
-        color: #8899aa;
+        opacity: 0.8;
         margin: 0;
     }
     .meta-badge {
         display: inline-block;
-        background: #1e2740;
-        border: 1px solid #2d3d5c;
+        background: rgba(127, 127, 127, 0.12);
+        border: 1px solid rgba(127, 127, 127, 0.2);
         border-radius: 6px;
         padding: 4px 12px;
         font-size: 0.82rem;
-        color: #7fb3d3;
+        opacity: 0.9;
         margin-top: 10px;
-    }
-
-    /* Tab başlıkları */
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1a1f2e;
-        border-radius: 8px 8px 0 0;
-        color: #8899aa;
-        font-weight: 600;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #2d3561 !important;
-        color: #F5A623 !important;
     }
 
     /* Metrik kutuları */
     .metric-card {
-        background: #1a1f2e;
-        border: 1px solid #2d3561;
+        background: rgba(127, 127, 127, 0.08);
+        border: 1px solid rgba(127, 127, 127, 0.2);
         border-radius: 10px;
         padding: 14px 18px;
         text-align: center;
     }
-    .metric-label { font-size: 0.78rem; color: #8899aa; margin-bottom: 4px; }
+    .metric-label { font-size: 0.78rem; opacity: 0.8; margin-bottom: 4px; }
     .metric-value { font-size: 1.4rem; font-weight: 700; }
     .metric-delta { font-size: 0.82rem; margin-top: 2px; }
 </style>
@@ -166,8 +151,7 @@ def filter_by_range(df: pd.DataFrame, period: str) -> pd.DataFrame:
 # ── Grafik Fonksiyonları ──────────────────────────────────────────────────────
 def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
     """
-    İki seriyi çift Y ekseninde gösterir.
-    s1, s2: 'Brent', 'JetFuel', 'Diesel', 'Gasoline' anahtarları
+    İki seriyi çift Y ekseninde gösterir (Tema uyumlu).
     """
     unit1 = "USD/varil" if s1 == "Brent" else "USD/galon"
     unit2 = "USD/varil" if s2 == "Brent" else "USD/galon"
@@ -177,9 +161,9 @@ def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
     # Seri 1 - ham veri (şeffaf)
     fig.add_trace(go.Scatter(
         x=df.index, y=df[s1],
-        name=s1, mode="lines",
-        line=dict(color=COLORS[s1], width=1, dash="dot"),
-        opacity=0.3, showlegend=False
+        name=f"{s1} (Günlük)", mode="lines",
+        line=dict(color=COLORS[s1], width=1.2, dash="dot"),
+        opacity=0.65, showlegend=False
     ), secondary_y=False)
 
     # Seri 1 - MA7
@@ -192,9 +176,9 @@ def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
     # Seri 2 - ham veri (şeffaf)
     fig.add_trace(go.Scatter(
         x=df.index, y=df[s2],
-        name=s2, mode="lines",
-        line=dict(color=COLORS[s2], width=1, dash="dot"),
-        opacity=0.3, showlegend=False
+        name=f"{s2} (Günlük)", mode="lines",
+        line=dict(color=COLORS[s2], width=1.2, dash="dot"),
+        opacity=0.65, showlegend=False
     ), secondary_y=True)
 
     # Seri 2 - MA7
@@ -212,25 +196,27 @@ def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
             text=f"Pearson r = {r}",
             xref="paper", yref="paper", x=0.01, y=0.97,
             showarrow=False,
-            font=dict(size=13, color="#ffffff", family="monospace"),
-            bgcolor="#2d3561", bordercolor="#F5A623",
+            font=dict(size=13, family="monospace"),
+            bgcolor="rgba(127,127,127,0.15)",
+            bordercolor=COLORS[s1],
             borderwidth=1, borderpad=6
         )
 
     fig.update_layout(
-        plot_bgcolor="#0F1117",
-        paper_bgcolor="#0F1117",
-        font=dict(color="#cdd9e5", family="Inter, sans-serif"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif"),
         legend=dict(
-            bgcolor="#1a1f2e", bordercolor="#2d3561",
+            bgcolor="rgba(127,127,127,0.1)",
+            bordercolor="rgba(127,127,127,0.2)",
             borderwidth=1, orientation="h", yanchor="bottom", y=1.02
         ),
         margin=dict(l=10, r=10, t=40, b=10),
         hovermode="x unified",
-        xaxis=dict(gridcolor="#1e2740", showgrid=True),
+        xaxis=dict(gridcolor="rgba(128,128,128,0.2)", showgrid=True),
         yaxis=dict(
             title=f"{s1} ({unit1})",
-            gridcolor="#1e2740", showgrid=True,
+            gridcolor="rgba(128,128,128,0.2)", showgrid=True,
             title_font=dict(color=COLORS[s1])
         ),
         yaxis2=dict(
@@ -243,10 +229,10 @@ def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
 
 
 def make_iata_chart(df: pd.DataFrame) -> go.Figure:
-    """Ana grafik: Brent + Jet + Dizel + Crack Spread, tek Y ekseni."""
+    """Ana grafik: Brent + Jet + Dizel + Crack Spread, tek Y ekseni (Tema Uyumlu)."""
     fig = go.Figure()
 
-    # Crack Spread - dolgulu alan (en altta, arka planda)
+    # Crack Spread - dolgulu alan
     fig.add_trace(go.Scatter(
         x=df.index, y=df["Crack"],
         name="Crack Spread (USD/varil)", mode="lines", fill="tozeroy",
@@ -254,21 +240,21 @@ def make_iata_chart(df: pd.DataFrame) -> go.Figure:
         fillcolor="rgba(231,76,60,0.18)"
     ))
 
-    # Brent - kalın sarı çizgi
+    # Brent
     fig.add_trace(go.Scatter(
         x=df.index, y=df["Brent"],
         name="Brent Petrol (USD/varil)", mode="lines",
         line=dict(color=COLORS["Brent"], width=2.5)
     ))
 
-    # Jet Yakıtı - varil bazında, kalın mavi
+    # Jet Yakıtı
     fig.add_trace(go.Scatter(
         x=df.index, y=df["JetFuel_bbl"],
         name="Jet Yakıtı (USD/varil)", mode="lines",
         line=dict(color=COLORS["JetFuel"], width=2.5)
     ))
 
-    # Dizel - kesikli yeşil
+    # Dizel
     fig.add_trace(go.Scatter(
         x=df.index, y=df["Diesel_bbl"],
         name="Dizel (USD/varil)", mode="lines",
@@ -276,19 +262,20 @@ def make_iata_chart(df: pd.DataFrame) -> go.Figure:
     ))
 
     fig.update_layout(
-        plot_bgcolor="#0F1117",
-        paper_bgcolor="#0F1117",
-        font=dict(color="#cdd9e5", family="Inter, sans-serif"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif"),
         legend=dict(
-            bgcolor="#1a1f2e", bordercolor="#2d3561",
+            bgcolor="rgba(127,127,127,0.1)",
+            bordercolor="rgba(127,127,127,0.2)",
             borderwidth=1, orientation="h", yanchor="bottom", y=1.02
         ),
         margin=dict(l=10, r=10, t=40, b=10),
         hovermode="x unified",
-        xaxis=dict(gridcolor="#1e2740", showgrid=True),
+        xaxis=dict(gridcolor="rgba(128,128,128,0.2)", showgrid=True),
         yaxis=dict(
             title="USD / Varil",
-            gridcolor="#1e2740", showgrid=True,
+            gridcolor="rgba(128,128,128,0.2)", showgrid=True,
             rangemode="tozero"
         ),
     )
@@ -315,7 +302,7 @@ def render_metrics(df: pd.DataFrame):
         col.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">{label}</div>
-            <div class="metric-value" style="color:{COLORS.get(key.split('_')[0], '#cdd9e5')}">
+            <div class="metric-value" style="color:{COLORS.get(key.split('_')[0], 'inherit')}">
                 ${val:.2f}
             </div>
             <div class="metric-delta" style="color:{color}">
@@ -400,9 +387,10 @@ with tab2:
             )
 
 # ── Footer ────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div style="text-align:center; color:#445566; font-size:0.8rem; margin-top:24px; padding-top:16px; border-top:1px solid #1e2740;">
+current_year = datetime.now().year
+st.markdown(f"""
+<div class="header-box" style="text-align:center; padding:12px; margin-top:24px;">
     Veri Kaynağı: FRED — Federal Reserve Bank of St. Louis &nbsp;|&nbsp;
-    Brika Sürdürülebilirlik © 2024
+    Brika Sürdürülebilirlik &copy; {current_year}
 </div>
 """, unsafe_allow_html=True)

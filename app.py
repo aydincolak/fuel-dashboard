@@ -1,7 +1,7 @@
 """
 app.py
 ------
-TFS Yakıt Fiyat Gösterge Paneli
+Yakıt Fiyat Gösterge Paneli
 Streamlit + Plotly tabanlı interaktif dashboard.
 Veri kaynağı: FRED (Federal Reserve Bank of St. Louis)
 """

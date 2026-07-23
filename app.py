@@ -390,19 +390,22 @@ render_metrics(df_full, df, period_choice)
 st.markdown("---")
 
 # ── Sekmeler ─────────────────────────────────────────────────────────────────
-# 7G MA toggle — sidebar'da tek bir kontrol, her iki sekme için geçerli
-with st.sidebar:
-    st.markdown("### Grafik Seçenekleri")
-    show_ma = st.toggle("7 Günlük Hareketli Ortalama (7G MA)", value=False)
-
 tab1, tab2 = st.tabs(["📊 Ana Grafik", "🔀 İkili Karşılaştırmalar"])
 
 with tab1:
-    st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
+    c1, c2 = st.columns([8, 1])
+    with c1:
+        st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
+    with c2:
+        show_ma = st.toggle("7G MA", value=False, key="ma_tab1")
     st.plotly_chart(make_iata_chart(df, show_ma=show_ma), width="stretch")
 
 with tab2:
-    st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
+    c1, c2 = st.columns([8, 1])
+    with c1:
+        st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
+    with c2:
+        show_ma2 = st.toggle("7G MA", value=False, key="ma_tab2")
     pairs = [
         ("JetFuel", "Brent"),
         ("JetFuel", "Diesel"),
@@ -426,7 +429,7 @@ with tab2:
         with col:
             st.markdown(f"**{pair_labels[(s1,s2)]}**")
             st.plotly_chart(
-                make_dual_chart(df, s1, s2, show_ma=show_ma),
+                make_dual_chart(df, s1, s2, show_ma=show_ma2),
                 width="stretch",
                 key=f"chart_{s1}_{s2}"
             )

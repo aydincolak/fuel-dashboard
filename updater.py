@@ -23,20 +23,15 @@ SERIES = {
     "Gasoline.csv": "DGASUSGULF",
 }
 
-import time
-
-FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}&fq=Daily&ts={ts}"
+FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
 HEADERS  = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    "Pragma": "no-cache"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
 
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker (CDN cache bypass ile). Once requests, olmazsa curl dener."""
-    ts = int(time.time())
-    url = FRED_URL.format(series_id=series_id, ts=ts)
+    """FRED'den gunluk seriyi ceker. Once requests, olmazsa curl dener."""
+    url = FRED_URL.format(series_id=series_id)
     text = None
 
     # Yontem 1: requests (cross-platform, hizli)

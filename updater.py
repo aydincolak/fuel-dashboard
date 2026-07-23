@@ -25,28 +25,38 @@ SERIES = {
 
 FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
 HEADERS  = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker. Once requests, olmazsa curl dener."""
+    """FRED'den gunluk seriyi ceker (Browser Referer taklidi ile)."""
     url = FRED_URL.format(series_id=series_id)
     text = None
+
+    headers = HEADERS.copy()
+    headers["Referer"] = f"https://fred.stlouisfed.org/series/{series_id}"
 
     # Yontem 1: requests (cross-platform, hizli)
     try:
         import requests
-        resp = requests.get(url, headers=HEADERS, timeout=30)
+        resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         text = resp.text
     except Exception as e:
         print(f"    requests hatasi: {e} — curl deneniyor...")
 
-    # Yontem 2: curl fallback (cache buster ile)
+    # Yontem 2: curl fallback
     if text is None:
         result = subprocess.run(
-            ["curl", "-s", "-H", "Cache-Control: no-cache", "-A", HEADERS["User-Agent"], "-L", "--max-time", "60", url],
+            [
+                "curl", "-s",
+                "-A", headers["User-Agent"],
+                "-e", headers["Referer"],
+                "-L", "--max-time", "60", url
+            ],
             capture_output=True, text=True, timeout=90
         )
         if result.returncode != 0 or not result.stdout.strip():

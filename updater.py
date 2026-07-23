@@ -23,13 +23,20 @@ SERIES = {
     "Gasoline.csv": "DGASUSGULF",
 }
 
-FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-HEADERS  = {"User-Agent": "Mozilla/5.0"}
+import time
+
+FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}&fq=Daily&ts={ts}"
+HEADERS  = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache"
+}
 
 
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker. Once requests, olmazsa curl dener."""
-    url = FRED_URL.format(series_id=series_id)
+    """FRED'den gunluk seriyi ceker (CDN cache bypass ile). Once requests, olmazsa curl dener."""
+    ts = int(time.time())
+    url = FRED_URL.format(series_id=series_id, ts=ts)
     text = None
 
     # Yontem 1: requests (cross-platform, hizli)
@@ -41,10 +48,10 @@ def fetch_fred(series_id: str) -> pd.DataFrame:
     except Exception as e:
         print(f"    requests hatasi: {e} — curl deneniyor...")
 
-    # Yontem 2: curl fallback
+    # Yontem 2: curl fallback (cache buster ile)
     if text is None:
         result = subprocess.run(
-            ["curl", "-s", "-A", "Mozilla/5.0", "-L", "--max-time", "60", url],
+            ["curl", "-s", "-H", "Cache-Control: no-cache", "-A", HEADERS["User-Agent"], "-L", "--max-time", "60", url],
             capture_output=True, text=True, timeout=90
         )
         if result.returncode != 0 or not result.stdout.strip():

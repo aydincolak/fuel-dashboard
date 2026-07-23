@@ -31,32 +31,32 @@ HEADERS  = {
 
 
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den günlük seriyi çeker."""
+    """FRED'den günlük seriyi çeker (Herhangi bir timeout kısıtlaması olmadan)."""
     url = FRED_URL.format(series_id=series_id)
     text = None
 
     headers = HEADERS.copy()
     headers["Referer"] = f"https://fred.stlouisfed.org/series/{series_id}"
 
-    # Yöntem 1: requests
+    # Yöntem 1: requests (timeout kısıtlaması yok)
     try:
         import requests
-        resp = requests.get(url, headers=headers, timeout=30)
+        resp = requests.get(url, headers=headers)
         resp.raise_for_status()
         text = resp.text
     except Exception as e:
         print(f"    requests hatası: {e} — curl deneniyor...")
 
-    # Yöntem 2: curl fallback
+    # Yöntem 2: curl fallback (timeout kısıtlaması yok)
     if text is None:
         result = subprocess.run(
             [
                 "curl", "-s",
                 "-A", headers["User-Agent"],
                 "-e", headers["Referer"],
-                "-L", "--max-time", "45", url
+                "-L", url
             ],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True
         )
         if result.returncode != 0 or not result.stdout.strip():
             raise RuntimeError(f"curl hatası: {result.stderr}")

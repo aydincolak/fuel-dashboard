@@ -35,14 +35,14 @@ import re
 
 
 def fetch_latest_from_html(series_id: str):
-    """FRED'in HTML web sayfasindan en son yayinlanan tarihi ve fiyati ceker."""
+    """FRED'in HTML web sayfasindan en son yayinlanan tarihi ve fiyati ceker (hizli 5s timeout)."""
     try:
         import requests
         url = f"https://fred.stlouisfed.org/series/{series_id}"
         headers = HEADERS.copy()
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=5)
         if resp.status_code == 200:
-            matches = re.findall(r'(\d{4}-\d{2}-\d{2}):\s*([\d\.]+)', resp.text)
+            matches = re.findall(r'(\d{4}-\d{2}-\d{2}):\s*([\d\.]+)', resp.text[:10000])
             if matches:
                 d_str, v_str = matches[0]
                 return pd.to_datetime(d_str), float(v_str)
@@ -52,32 +52,32 @@ def fetch_latest_from_html(series_id: str):
 
 
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker (Browser Referer taklidi ve HTML Scraper destegi ile)."""
+    """FRED'den gunluk seriyi ceker (hizli 5s timeout)."""
     url = FRED_URL.format(series_id=series_id)
     text = None
 
     headers = HEADERS.copy()
     headers["Referer"] = f"https://fred.stlouisfed.org/series/{series_id}"
 
-    # Yontem 1: requests (cross-platform, hizli)
+    # Yontem 1: requests (hizli 5s)
     try:
         import requests
-        resp = requests.get(url, headers=headers, timeout=30)
+        resp = requests.get(url, headers=headers, timeout=5)
         resp.raise_for_status()
         text = resp.text
     except Exception as e:
         print(f"    requests hatasi: {e} — curl deneniyor...")
 
-    # Yontem 2: curl fallback
+    # Yontem 2: curl fallback (hizli 5s)
     if text is None:
         result = subprocess.run(
             [
                 "curl", "-s",
                 "-A", headers["User-Agent"],
                 "-e", headers["Referer"],
-                "-L", "--max-time", "60", url
+                "-L", "--max-time", "5", url
             ],
-            capture_output=True, text=True, timeout=90
+            capture_output=True, text=True, timeout=8
         )
         if result.returncode != 0 or not result.stdout.strip():
             raise RuntimeError(f"curl hatasi: {result.stderr}")

@@ -31,8 +31,28 @@ HEADERS  = {
 }
 
 
+import re
+
+
+def fetch_latest_from_html(series_id: str):
+    """FRED'in HTML web sayfasindan en son yayinlanan tarihi ve fiyati ceker."""
+    try:
+        import requests
+        url = f"https://fred.stlouisfed.org/series/{series_id}"
+        headers = HEADERS.copy()
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            matches = re.findall(r'(\d{4}-\d{2}-\d{2}):\s*([\d\.]+)', resp.text)
+            if matches:
+                d_str, v_str = matches[0]
+                return pd.to_datetime(d_str), float(v_str)
+    except Exception as e:
+        print(f"    HTML parse uyarisi: {e}")
+    return None, None
+
+
 def fetch_fred(series_id: str) -> pd.DataFrame:
-    """FRED'den gunluk seriyi ceker (Browser Referer taklidi ile)."""
+    """FRED'den gunluk seriyi ceker (Browser Referer taklidi ve HTML Scraper destegi ile)."""
     url = FRED_URL.format(series_id=series_id)
     text = None
 
@@ -70,6 +90,14 @@ def fetch_fred(series_id: str) -> pd.DataFrame:
     df[series_id] = pd.to_numeric(df[series_id], errors="coerce")
     df = df.dropna().sort_values("DATE").reset_index(drop=True)
     df = df[df["DATE"] >= "2021-01-01"].reset_index(drop=True)
+
+    # HTML Web Sayfası Teyidi (CSV CDN gecikmesini aşmak için)
+    h_date, h_val = fetch_latest_from_html(series_id)
+    if h_date is not None and not df.empty and h_date > df["DATE"].max():
+        new_row = pd.DataFrame([{"DATE": h_date, series_id: h_val}])
+        df = pd.concat([df, new_row], ignore_index=True).sort_values("DATE").reset_index(drop=True)
+        print(f"  [HTML Ekleme] Son web verisi eklendi: {h_date.date()} -> {h_val}")
+
     return df
 
 

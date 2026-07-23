@@ -1,17 +1,15 @@
 """
 updater.py
 ----------
-FRED'den 4 seriyi çekerek data/ klasöründeki CSV'leri günceller.
-Sadece son 2 haftanın verisi çekilip mevcut CSV'ye eklenir (hızlı).
+FRED Official API'si ile 4 seriyi çekerek data/ klasöründeki CSV'leri günceller.
 GitHub Actions tarafından her gece çalıştırılır.
+Yerel olarak da çalıştırılabilir: FRED_API_KEY=xxx python updater.py
 """
 
-import subprocess
 import json
 import pandas as pd
 import os
 from datetime import datetime, timedelta
-from io import StringIO
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -23,75 +21,71 @@ SERIES = {
     "Gasoline.csv": "DGASUSGULF",
 }
 
-# Sadece son 2 haftanın verisi çekilir — küçük, hızlı
-FRED_URL = (
-    "https://fred.stlouisfed.org/graph/fredgraph.csv"
-    "?id={series_id}&cosd={start_date}&coed={end_date}"
+# FRED Resmi API — hızlı, güvenilir, IP kısıtlaması yok
+FRED_API_URL = (
+    "https://api.stlouisfed.org/fred/series/observations"
+    "?series_id={series_id}"
+    "&observation_start={start_date}"
+    "&api_key={api_key}"
+    "&file_type=json"
 )
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-}
 
-
-def fetch_recent(series_id: str) -> pd.DataFrame:
-    """FRED'den son 2 haftanın verisini çeker (çok hızlı, küçük dosya)."""
-    end_date   = datetime.utcnow().strftime("%Y-%m-%d")
-    start_date = (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d")
-    url = FRED_URL.format(series_id=series_id, start_date=start_date, end_date=end_date)
-    text = None
-
-    # Yöntem 1: requests
-    try:
-        import requests
-        resp = requests.get(url, headers=HEADERS)
-        resp.raise_for_status()
-        text = resp.text
-    except Exception as e:
-        print(f"    requests hatası: {e} — curl deneniyor...")
-
-    # Yöntem 2: curl fallback
-    if text is None:
-        result = subprocess.run(
-            ["curl", "-s", "-A", HEADERS["User-Agent"], "-L", url],
-            capture_output=True, text=True
+def get_api_key() -> str:
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "FRED_API_KEY bulunamadı! "
+            "GitHub Secrets'a ekleyin veya lokalde export FRED_API_KEY=xxx yapın."
         )
-        if result.returncode != 0 or not result.stdout.strip():
-            raise RuntimeError(f"curl hatası: {result.stderr}")
-        text = result.stdout
+    return key
 
-    lines = [l for l in text.strip().split("\n") if "," in l]
-    if not lines:
-        raise RuntimeError("Boş yanıt alındı")
 
-    df = pd.read_csv(StringIO("\n".join(lines)))
-    df.columns = ["DATE", series_id]
-    df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
+def fetch_recent(series_id: str, api_key: str) -> pd.DataFrame:
+    """FRED API'si ile son 2 haftanın verisini çeker — çok hızlı."""
+    import requests
+    start_date = (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d")
+    url = FRED_API_URL.format(
+        series_id=series_id,
+        start_date=start_date,
+        api_key=api_key,
+    )
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+
+    rows = [
+        {"DATE": obs["date"], series_id: obs["value"]}
+        for obs in data.get("observations", [])
+        if obs["value"] != "."
+    ]
+    if not rows:
+        raise RuntimeError(f"{series_id} için veri gelmedi.")
+
+    df = pd.DataFrame(rows)
+    df["DATE"] = pd.to_datetime(df["DATE"])
     df[series_id] = pd.to_numeric(df[series_id], errors="coerce")
     df = df.dropna().sort_values("DATE").reset_index(drop=True)
     return df
 
 
-def update_csv(filename: str, series_id: str):
+def update_csv(filename: str, series_id: str, api_key: str):
     path = os.path.join(DATA_DIR, filename)
-    print(f"[{series_id}] Son 2 hafta çekiliyor...")
+    print(f"[{series_id}] FRED API'sinden son 2 hafta çekiliyor...")
 
-    fresh = fetch_recent(series_id)
-    print(f"  FRED'den {len(fresh)} satır alındı. Son tarih: {fresh['DATE'].iloc[-1].date()}")
+    fresh = fetch_recent(series_id, api_key)
+    print(f"  {len(fresh)} satır alındı. Son tarih: {fresh['DATE'].iloc[-1].date()}")
 
     if not os.path.exists(path):
-        # İlk kurulum: tüm veri yoksa son 2 haftayı yaz
         fresh["DATE"] = fresh["DATE"].dt.strftime("%Y-%m-%d")
         fresh.to_csv(path, index=False)
         print(f"  Yeni dosya oluşturuldu.")
         return
 
-    # Mevcut CSV'yi oku
     existing = pd.read_csv(path)
     existing["DATE"] = pd.to_datetime(existing["DATE"], errors="coerce")
     last_date = existing["DATE"].max()
 
-    # Sadece yeni satırları ekle
     new_rows = fresh[fresh["DATE"] > last_date].copy()
     if new_rows.empty:
         print(f"  Zaten güncel. Son tarih: {last_date.date()}")
@@ -113,10 +107,11 @@ def write_last_updated():
 
 
 if __name__ == "__main__":
-    print("=== FRED Veri Güncelleyici ===\n")
+    print("=== FRED Veri Güncelleyici (API) ===\n")
+    api_key = get_api_key()
     for filename, series_id in SERIES.items():
         try:
-            update_csv(filename, series_id)
+            update_csv(filename, series_id, api_key)
         except Exception as e:
             print(f"  [HATA] {series_id}: {e}")
     write_last_updated()

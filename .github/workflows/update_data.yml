@@ -28,6 +28,8 @@ jobs:
 
       - name: Veriyi guncelle
         run: python updater.py
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
 
       - name: Degisiklikleri commit et ve push et
         run: |

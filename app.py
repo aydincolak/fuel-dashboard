@@ -149,44 +149,47 @@ def filter_by_range(df: pd.DataFrame, period: str) -> pd.DataFrame:
 
 
 # ── Grafik Fonksiyonları ──────────────────────────────────────────────────────
-def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
+def make_dual_chart(df: pd.DataFrame, s1: str, s2: str, show_ma: bool = False) -> go.Figure:
     """
     İki seriyi çift Y ekseninde gösterir (Tema uyumlu).
+    show_ma=True ise 7 günlük hareketli ortalama da eklenir.
     """
     unit1 = "USD/varil" if s1 == "Brent" else "USD/galon"
     unit2 = "USD/varil" if s2 == "Brent" else "USD/galon"
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    # Seri 1 - ham veri (şeffaf)
+    # Seri 1 - günlük veri
     fig.add_trace(go.Scatter(
         x=df.index, y=df[s1],
         name=f"{s1} (Günlük)", mode="lines",
-        line=dict(color=COLORS[s1], width=1.2, dash="dot"),
-        opacity=0.65, showlegend=False
+        line=dict(color=COLORS[s1], width=2),
     ), secondary_y=False)
 
-    # Seri 1 - MA7
-    fig.add_trace(go.Scatter(
-        x=df.index, y=df[f"{s1}_MA7"],
-        name=f"{s1} (7G MA)", mode="lines",
-        line=dict(color=COLORS[s1], width=2.5),
-    ), secondary_y=False)
+    # Seri 1 - MA7 (isteğe bağlı)
+    if show_ma:
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df[f"{s1}_MA7"],
+            name=f"{s1} (7G MA)", mode="lines",
+            line=dict(color=COLORS[s1], width=2.5, dash="dot"),
+            opacity=0.7,
+        ), secondary_y=False)
 
-    # Seri 2 - ham veri (şeffaf)
+    # Seri 2 - günlük veri
     fig.add_trace(go.Scatter(
         x=df.index, y=df[s2],
         name=f"{s2} (Günlük)", mode="lines",
-        line=dict(color=COLORS[s2], width=1.2, dash="dot"),
-        opacity=0.65, showlegend=False
+        line=dict(color=COLORS[s2], width=2),
     ), secondary_y=True)
 
-    # Seri 2 - MA7
-    fig.add_trace(go.Scatter(
-        x=df.index, y=df[f"{s2}_MA7"],
-        name=f"{s2} (7G MA)", mode="lines",
-        line=dict(color=COLORS[s2], width=2.5),
-    ), secondary_y=True)
+    # Seri 2 - MA7 (isteğe bağlı)
+    if show_ma:
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df[f"{s2}_MA7"],
+            name=f"{s2} (7G MA)", mode="lines",
+            line=dict(color=COLORS[s2], width=2.5, dash="dot"),
+            opacity=0.7,
+        ), secondary_y=True)
 
     # Pearson r hesapla
     clean = df[[s1, s2]].dropna()
@@ -228,7 +231,7 @@ def make_dual_chart(df: pd.DataFrame, s1: str, s2: str) -> go.Figure:
     return fig
 
 
-def make_iata_chart(df: pd.DataFrame) -> go.Figure:
+def make_iata_chart(df: pd.DataFrame, show_ma: bool = False) -> go.Figure:
     """Ana grafik: Brent + Jet + Dizel + Crack Spread, tek Y ekseni (Tema Uyumlu)."""
     fig = go.Figure()
 
@@ -260,6 +263,21 @@ def make_iata_chart(df: pd.DataFrame) -> go.Figure:
         name="Dizel (USD/varil)", mode="lines",
         line=dict(color=COLORS["Diesel"], width=1.8, dash="dash")
     ))
+
+    # 7G MA (isteğe bağlı)
+    if show_ma:
+        for col, label in [
+            ("Brent",      "Brent 7G MA"),
+            ("JetFuel_bbl","Jet 7G MA"),
+            ("Diesel_bbl", "Dizel 7G MA"),
+        ]:
+            key = col.split("_")[0]
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df[f"{col}_MA7"],
+                name=label, mode="lines",
+                line=dict(color=COLORS[key], width=1.5, dash="dot"),
+                opacity=0.6,
+            ))
 
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
@@ -375,11 +393,19 @@ st.markdown("---")
 tab1, tab2 = st.tabs(["📊 Ana Grafik", "🔀 İkili Karşılaştırmalar"])
 
 with tab1:
-    st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
-    st.plotly_chart(make_iata_chart(df), width="stretch")
+    c1, c2 = st.columns([6, 1])
+    with c1:
+        st.markdown(f"##### Brent Petrol · Jet Yakıtı · Dizel · Crack Spread  |  {period_choice}")
+    with c2:
+        show_ma_tab1 = st.toggle("7G MA", value=False, key="ma_tab1")
+    st.plotly_chart(make_iata_chart(df, show_ma=show_ma_tab1), width="stretch")
 
 with tab2:
-    st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
+    c1, c2 = st.columns([6, 1])
+    with c1:
+        st.markdown(f"##### İkili Yakıt Fiyat Karşılaştırmaları &nbsp;|&nbsp; {period_choice}")
+    with c2:
+        show_ma_tab2 = st.toggle("7G MA", value=False, key="ma_tab2")
     pairs = [
         ("JetFuel", "Brent"),
         ("JetFuel", "Diesel"),
@@ -403,7 +429,7 @@ with tab2:
         with col:
             st.markdown(f"**{pair_labels[(s1,s2)]}**")
             st.plotly_chart(
-                make_dual_chart(df, s1, s2),
+                make_dual_chart(df, s1, s2, show_ma=show_ma_tab2),
                 width="stretch",
                 key=f"chart_{s1}_{s2}"
             )

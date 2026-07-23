@@ -283,7 +283,7 @@ def make_iata_chart(df: pd.DataFrame) -> go.Figure:
 
 
 # ── Son Fiyat Metrikleri ──────────────────────────────────────────────────────
-def render_metrics(df: pd.DataFrame):
+def render_metrics(df_full: pd.DataFrame, df_filtered: pd.DataFrame, period_label: str):
     items = [
         ("Brent",       "Brent Petrol", "USD/varil"),
         ("JetFuel_bbl", "Jet Yakıtı",   "USD/varil"),
@@ -293,22 +293,44 @@ def render_metrics(df: pd.DataFrame):
     ]
     cols = st.columns(len(items))
     for col, (key, label, unit) in zip(cols, items):
-        val  = df[key].dropna().iloc[-1]
-        prev = df[key].dropna().iloc[-8] if len(df[key].dropna()) > 8 else val
-        delta     = val - prev
-        delta_pct = (delta / prev * 100) if prev else 0
-        color = "#27AE60" if delta >= 0 else "#E74C3C"
-        arrow = "▲" if delta >= 0 else "▼"
+        series_clean = df_full[key].dropna()
+        val = series_clean.iloc[-1]
+        
+        # 1. Son Gün Değişimi
+        prev_daily = series_clean.iloc[-2] if len(series_clean) > 1 else val
+        daily_delta = val - prev_daily
+        daily_pct = (daily_delta / prev_daily * 100) if prev_daily else 0
+        daily_color = "#27AE60" if daily_delta >= 0 else "#E74C3C"
+        daily_arrow = "▲" if daily_delta >= 0 else "▼"
+
+        # 2. Son 7 Gün Değişimi
+        prev_7d = series_clean.iloc[-8] if len(series_clean) > 7 else val
+        w7_delta = val - prev_7d
+        w7_pct = (w7_delta / prev_7d * 100) if prev_7d else 0
+        w7_color = "#27AE60" if w7_delta >= 0 else "#E74C3C"
+        w7_arrow = "▲" if w7_delta >= 0 else "▼"
+
+        # 3. Seçili Dönem Değişimi (Dinamik)
+        filtered_clean = df_filtered[key].dropna()
+        prev_period = filtered_clean.iloc[0] if len(filtered_clean) > 0 else val
+        period_delta = val - prev_period
+        period_pct = (period_delta / prev_period * 100) if prev_period else 0
+        period_color = "#27AE60" if period_delta >= 0 else "#E74C3C"
+        period_arrow = "▲" if period_delta >= 0 else "▼"
+
         col.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">{label}</div>
             <div class="metric-value" style="color:{COLORS.get(key.split('_')[0], 'inherit')}">
                 ${val:.2f}
             </div>
-            <div class="metric-delta" style="color:{color}">
-                {arrow} {abs(delta):.2f} ({abs(delta_pct):.1f}%) 7G
+            <div class="metric-delta" style="color:{w7_color}; font-size:0.8rem;">
+                {w7_arrow} ${abs(w7_delta):.2f} (%{abs(w7_pct):.1f}) <span style="opacity:0.75">Son 7 Gün</span>
             </div>
-            <div class="metric-label" style="margin-top:4px">{unit}</div>
+            <div class="metric-delta" style="color:{period_color}; font-size:0.8rem;">
+                {period_arrow} ${abs(period_delta):.2f} (%{abs(period_pct):.1f}) <span style="opacity:0.75">{period_label}</span>
+            </div>
+            <div class="metric-label" style="margin-top:6px">{unit}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -346,7 +368,7 @@ df = filter_by_range(df_full, period_choice)
 
 # ── Metrikler ────────────────────────────────────────────────────────────────
 st.markdown("---")
-render_metrics(df_full)
+render_metrics(df_full, df, period_choice)
 st.markdown("---")
 
 # ── Sekmeler ─────────────────────────────────────────────────────────────────

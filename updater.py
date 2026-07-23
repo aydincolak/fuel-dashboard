@@ -66,22 +66,14 @@ def update_csv(filename: str, series_id: str):
     print(f"[{series_id}] FRED'den veri cekiliyor...")
     fresh = fetch_fred(series_id)
 
-    if os.path.exists(path):
-        existing = pd.read_csv(path)
-        existing["DATE"] = pd.to_datetime(existing["DATE"], errors="coerce")
-        last_date = existing["DATE"].max()
-        new_rows = fresh[fresh["DATE"] > last_date]
-        if new_rows.empty:
-            print(f"  Zaten guncel. Son tarih: {last_date.date()}")
-            return
-        updated = pd.concat([existing, new_rows], ignore_index=True)
-        updated["DATE"] = pd.to_datetime(updated["DATE"]).dt.strftime("%Y-%m-%d")
-        updated.to_csv(path, index=False)
-        print(f"  {len(new_rows)} yeni satir eklendi. Son tarih: {new_rows['DATE'].max().date()}")
-    else:
-        fresh["DATE"] = fresh["DATE"].dt.strftime("%Y-%m-%d")
-        fresh.to_csv(path, index=False)
-        print(f"  Yeni dosya olusturuldu. {len(fresh)} satir.")
+    if fresh.empty:
+        print(f"  [UYARI] {series_id} verisi bos geldi!")
+        return
+
+    fresh_export = fresh.copy()
+    fresh_export["DATE"] = fresh_export["DATE"].dt.strftime("%Y-%m-%d")
+    fresh_export.to_csv(path, index=False)
+    print(f"  Guncellendi. Toplam {len(fresh)} satir. Son tarih: {fresh['DATE'].iloc[-1].date()}")
 
 
 def write_last_updated():

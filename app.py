@@ -147,6 +147,13 @@ def filter_by_range(df: pd.DataFrame, period: str) -> pd.DataFrame:
     return df[df.index >= start]
 
 
+def pearson_r(df: pd.DataFrame, s1: str, s2: str) -> float | None:
+    clean = df[[s1, s2]].dropna()
+    if len(clean) <= 5:
+        return None
+    return round(float(clean[s1].corr(clean[s2])), 3)
+
+
 # ── Grafik Fonksiyonları ──────────────────────────────────────────────────────
 def make_dual_chart(
     df: pd.DataFrame,
@@ -197,20 +204,6 @@ def make_dual_chart(
             line=dict(color=COLORS[s2], width=2.5, dash="dot"),
             opacity=0.7,
         ), secondary_y=True)
-
-    # Pearson r hesapla
-    clean = df[[s1, s2]].dropna()
-    if len(clean) > 5:
-        r = round(clean[s1].corr(clean[s2]), 3)
-        fig.add_annotation(
-            text=f"Pearson r = {r}",
-            xref="paper", yref="paper", x=0.01, y=0.97,
-            showarrow=False,
-            font=dict(size=13, family="monospace"),
-            bgcolor="rgba(127,127,127,0.15)",
-            bordercolor=COLORS[s1],
-            borderwidth=1, borderpad=6
-        )
 
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
@@ -446,7 +439,17 @@ with tab2:
     for i, (s1, s2) in enumerate(pairs):
         col = col_left if i % 2 == 0 else col_right
         with col:
-            st.markdown(f"**{pair_labels[(s1,s2)]}**")
+            r = pearson_r(df, s1, s2)
+            title = pair_labels[(s1, s2)]
+            if r is not None:
+                st.markdown(
+                    f"**{title}**"
+                    f"&nbsp;&nbsp;<span style='opacity:0.7; font-family:monospace; font-size:0.9rem;'>"
+                    f"Pearson r = {r}</span>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(f"**{title}**")
             st.plotly_chart(
                 make_dual_chart(
                     df, s1, s2,

@@ -17,7 +17,6 @@ from datetime import datetime, timedelta
 # ── Sayfa Ayarları ──────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Yakıt Fiyat Gösterge Paneli",
-    page_icon="⛽",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -363,12 +362,12 @@ meta    = load_meta()
 # ── Başlık ───────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="header-box">
-    <p class="header-title">⛽ Yakıt Fiyat Gösterge Paneli</p>
+    <p class="header-title">Yakıt Fiyat Gösterge Paneli</p>
     <p class="header-sub">Brika Sürdürülebilirlik | Havacılık Yakıtı Piyasa Analizi</p>
     <span class="meta-badge">
-        📡 Kaynak: FRED — Federal Reserve Bank of St. Louis &nbsp;|&nbsp;
-        🕐 Son güncelleme: {meta.get('last_updated', 'Bilinmiyor')} &nbsp;|&nbsp;
-        📅 Veri: {df_full.index.min().strftime('%d.%m.%Y')} – {df_full.index.max().strftime('%d.%m.%Y')}
+        Kaynak: FRED — Federal Reserve Bank of St. Louis &nbsp;|&nbsp;
+        Son güncelleme: {meta.get('last_updated', 'Bilinmiyor')} &nbsp;|&nbsp;
+        Veri: {df_full.index.min().strftime('%d.%m.%Y')} – {df_full.index.max().strftime('%d.%m.%Y')}
     </span>
 </div>
 """, unsafe_allow_html=True)
@@ -390,7 +389,7 @@ render_metrics(df_full, df, period_choice)
 st.markdown("---")
 
 # ── Sekmeler ─────────────────────────────────────────────────────────────────
-tab1, tab2 = st.tabs(["📊 Ana Grafik", "🔀 İkili Karşılaştırmalar"])
+tab1, tab2 = st.tabs(["Ana Grafik", "İkili Karşılaştırmalar"])
 
 with tab1:
     c1, c2 = st.columns([8, 1])

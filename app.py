@@ -164,46 +164,68 @@ def make_dual_chart(
 ) -> go.Figure:
     """
     İki seriyi çift Y ekseninde gösterir (Tema uyumlu).
-    show_daily / show_ma ile günlük veri ve 7G MA ayrı ayrı açılıp kapatılabilir.
+    Tüm fiyatlar USD/varil cinsinden gösterilir.
     """
-    unit1 = "USD/varil" if s1 == "Brent" else "USD/galon"
-    unit2 = "USD/varil" if s2 == "Brent" else "USD/galon"
+    # Galon serilerini varil karşılığına çevir
+    def col(s):
+        return s if s == "Brent" else f"{s}_bbl"
+
+    LABELS = {
+        "Brent":    "Brent Petrol",
+        "JetFuel":  "Jet Yakıtı",
+        "Diesel":   "Dizel",
+        "Gasoline": "Benzin",
+    }
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    # Seri 1 - günlük veri
+    # Seri 1 - günlük veri (varil)
     if show_daily:
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[s1],
-            name=f"{s1} (Günlük)", mode="lines",
+            x=df.index, y=df[col(s1)],
+            name=f"{LABELS[s1]} (USD/varil)", mode="lines",
             line=dict(color=COLORS[s1], width=2),
         ), secondary_y=False)
 
     # Seri 1 - MA7 (isteğe bağlı)
     if show_ma:
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[f"{s1}_MA7"],
-            name=f"{s1} (7G MA)", mode="lines",
+            x=df.index, y=df[f"{col(s1)}_MA7"],
+            name=f"{LABELS[s1]} 7G MA", mode="lines",
             line=dict(color=COLORS[s1], width=2.5, dash="dot"),
             opacity=0.7,
         ), secondary_y=False)
 
-    # Seri 2 - günlük veri
+    # Seri 2 - günlük veri (varil)
     if show_daily:
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[s2],
-            name=f"{s2} (Günlük)", mode="lines",
+            x=df.index, y=df[col(s2)],
+            name=f"{LABELS[s2]} (USD/varil)", mode="lines",
             line=dict(color=COLORS[s2], width=2),
         ), secondary_y=True)
 
     # Seri 2 - MA7 (isteğe bağlı)
     if show_ma:
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[f"{s2}_MA7"],
-            name=f"{s2} (7G MA)", mode="lines",
+            x=df.index, y=df[f"{col(s2)}_MA7"],
+            name=f"{LABELS[s2]} 7G MA", mode="lines",
             line=dict(color=COLORS[s2], width=2.5, dash="dot"),
             opacity=0.7,
         ), secondary_y=True)
+
+    # Pearson r - varil bazında hesapla
+    clean = df[[col(s1), col(s2)]].dropna()
+    if len(clean) > 5:
+        r = round(float(clean[col(s1)].corr(clean[col(s2)])), 3)
+        fig.add_annotation(
+            text=f"Pearson r = {r}",
+            xref="paper", yref="paper", x=0.01, y=0.97,
+            showarrow=False,
+            font=dict(size=13, family="monospace"),
+            bgcolor="rgba(127,127,127,0.15)",
+            bordercolor=COLORS[s1],
+            borderwidth=1, borderpad=6
+        )
 
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
@@ -218,12 +240,12 @@ def make_dual_chart(
         hovermode="x unified",
         xaxis=dict(gridcolor="rgba(128,128,128,0.2)", showgrid=True),
         yaxis=dict(
-            title=f"{s1} ({unit1})",
+            title=f"{LABELS[s1]} (USD/varil)",
             gridcolor="rgba(128,128,128,0.2)", showgrid=True,
             title_font=dict(color=COLORS[s1])
         ),
         yaxis2=dict(
-            title=f"{s2} ({unit2})",
+            title=f"{LABELS[s2]} (USD/varil)",
             title_font=dict(color=COLORS[s2]),
             showgrid=False
         ),

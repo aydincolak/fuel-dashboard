@@ -163,10 +163,8 @@ def make_dual_chart(
     show_ma: bool = False,
 ) -> go.Figure:
     """
-    İki seriyi çift Y ekseninde gösterir (Tema uyumlu).
-    Tüm fiyatlar USD/varil cinsinden gösterilir.
+    İki seriyi tek Y ekseninde gösterir — tüm fiyatlar USD/varil.
     """
-    # Galon serilerini varil karşılığına çevir
     def col(s):
         return s if s == "Brent" else f"{s}_bbl"
 
@@ -177,43 +175,39 @@ def make_dual_chart(
         "Gasoline": "Benzin",
     }
 
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig = go.Figure()
 
-    # Seri 1 - günlük veri (varil)
+    # Seri 1
     if show_daily:
         fig.add_trace(go.Scatter(
             x=df.index, y=df[col(s1)],
-            name=f"{LABELS[s1]} (USD/varil)", mode="lines",
+            name=LABELS[s1], mode="lines",
             line=dict(color=COLORS[s1], width=2),
-        ), secondary_y=False)
-
-    # Seri 1 - MA7 (isteğe bağlı)
+        ))
     if show_ma:
         fig.add_trace(go.Scatter(
             x=df.index, y=df[f"{col(s1)}_MA7"],
             name=f"{LABELS[s1]} 7G MA", mode="lines",
-            line=dict(color=COLORS[s1], width=2.5, dash="dot"),
+            line=dict(color=COLORS[s1], width=2, dash="dot"),
             opacity=0.7,
-        ), secondary_y=False)
+        ))
 
-    # Seri 2 - günlük veri (varil)
+    # Seri 2
     if show_daily:
         fig.add_trace(go.Scatter(
             x=df.index, y=df[col(s2)],
-            name=f"{LABELS[s2]} (USD/varil)", mode="lines",
+            name=LABELS[s2], mode="lines",
             line=dict(color=COLORS[s2], width=2),
-        ), secondary_y=True)
-
-    # Seri 2 - MA7 (isteğe bağlı)
+        ))
     if show_ma:
         fig.add_trace(go.Scatter(
             x=df.index, y=df[f"{col(s2)}_MA7"],
             name=f"{LABELS[s2]} 7G MA", mode="lines",
-            line=dict(color=COLORS[s2], width=2.5, dash="dot"),
+            line=dict(color=COLORS[s2], width=2, dash="dot"),
             opacity=0.7,
-        ), secondary_y=True)
+        ))
 
-    # Pearson r - varil bazında hesapla
+    # Pearson r
     clean = df[[col(s1), col(s2)]].dropna()
     if len(clean) > 5:
         r = round(float(clean[col(s1)].corr(clean[col(s2)])), 3)
@@ -240,14 +234,8 @@ def make_dual_chart(
         hovermode="x unified",
         xaxis=dict(gridcolor="rgba(128,128,128,0.2)", showgrid=True),
         yaxis=dict(
-            title=f"{LABELS[s1]} (USD/varil)",
+            title="USD / Varil",
             gridcolor="rgba(128,128,128,0.2)", showgrid=True,
-            title_font=dict(color=COLORS[s1])
-        ),
-        yaxis2=dict(
-            title=f"{LABELS[s2]} (USD/varil)",
-            title_font=dict(color=COLORS[s2]),
-            showgrid=False
         ),
     )
     return fig
